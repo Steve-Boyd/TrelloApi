@@ -13,9 +13,9 @@
             <select class="form-control" id="boards"></select>
         </div>
       </form>
-      <span>Number of times each label has been used on this board.</span>
+      <span>Number of times each label has been used on this board: </span>
       <div id="labels"></div>
-      <span>Lists on this board.</span>
+      <span>Lists on this board: </span><br /><br /><br />
       <div id="lists"></div>
     </div> 
   </body>
@@ -43,6 +43,7 @@
       );
     };
     
+    // get the labels and uses
     var loadedLabels = function(labels) {
       $.each(labels, function(index, label) {
         var label = $("<p><span class='badge' style='background:" + label.color + ";'>" + label.uses + "</span> " + label.name + "</p>");
@@ -50,13 +51,16 @@
       });
     };
 
+        // get the lists on the board
         var loadedLists = function(lists) {
+          $('#lists').append("<ul>")
       $.each(lists, function(index, list) {
         console.log('list')
         console.log(list)
-        var list = $("<p><span class='' >List: </span> " + list.name + "</p>");
+        var list = $("<li> " + list.name + "</li>");
         $('#lists').append(list)
       });
+      $('#lists').append("</ul>")
     };
 
     $('#boards').change(function() {
