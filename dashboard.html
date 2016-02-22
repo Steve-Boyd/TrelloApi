@@ -12,11 +12,17 @@
           <label class="control-label">Choose your board</label>
             <select class="form-control" id="boards"></select>
         </div>
+        <span>Create a card in the first list of the selected board: </span>
+        <input type='checkbox' id='createCard' />
       </form>
+      <hr / >
       <span>Number of times each label has been used on this board: </span>
       <div id="labels"></div>
-      <span>Lists on this board: </span><br /><br /><br />
+      <hr / >
+      <br />
+      <span>Lists on this board: </span><br />
       <div id="lists"></div>
+      <hr / >
     </div> 
   </body>
 
@@ -24,8 +30,43 @@
   <script src="https://api.trello.com/1/client.js?key=92b3e214664502573113b2ffd908ac0c"></script>
   
   <script type="text/javascript">
-    
-    var loadedBoards = function(boards) {
+
+  // create a card
+  
+var createCardOnSelect = false;
+
+function createCard(list){
+  var myList = list;
+  var creationSuccess = function(data) {
+    console.log('Card created successfully. Data returned:' + JSON.stringify(data));
+  };
+  
+  var newCard = {
+    name: 'Card created by Steve using the Trello API', 
+    desc: 'Description of card.',
+    // Place this card at the top of our list 
+    idList: myList,
+    pos: 'top'
+  };
+  
+  Trello.post('/cards/', newCard, creationSuccess);
+  }
+
+
+function updateCard(cardId, card){
+  //Trello.put("/cards/[ID]", {name: 'New Test Card'});
+  Trello.put("/cards/" + cardId, card);
+}
+
+    // ------------------------------------------------------------------------ //
+    // --------------------------- Callbacks ---------------------------------- //
+    // ------------------------------------------------------------------------ //
+
+    // Add the users boards to a ddl
+    var loadedBoardsCb = function(boards) {
+       $('#boards').append($("<option></option>")
+          .attr("value",0)
+          .text("Select a board")); 
       $.each(boards, function(index, value) {
         $('#boards')
           .append($("<option></option>")
@@ -34,52 +75,81 @@
       });
     };
     
-    var loadBoards = function() {
-      //Get the users boards
-      Trello.get(
-        '/members/me/boards/',
-        loadedBoards,
-        function() { console.log("Failed to load boards"); }
-      );
-    };
-    
     // get the labels and uses
-    var loadedLabels = function(labels) {
+    var loadedLabelsCb = function(labels) {
       $.each(labels, function(index, label) {
         var label = $("<p><span class='badge' style='background:" + label.color + ";'>" + label.uses + "</span> " + label.name + "</p>");
-        $('#labels').append(label)
+        $('#labels').append(label);
       });
     };
 
-        // get the lists on the board
-        var loadedLists = function(lists) {
-          $('#lists').append("<ul>")
+    // get the lists on the board
+    var loadedListsCb = function(lists) {
+      $('#lists').append("<ul>");
+      if(createCardOnSelect){
+      createCard(lists[0].id);  
+      }
       $.each(lists, function(index, list) {
-        console.log('list')
-        console.log(list)
-        var list = $("<li> " + list.name + "</li>");
+        var list = $("<li> " + list.name + ": "+list.cards.length+" cards.</li>");
         $('#lists').append(list)
       });
       $('#lists').append("</ul>")
     };
 
+    // Success function for the Trello API authorization
+    var loadBoardsCb = function() {
+      //Get the users boards
+      Trello.get(
+        '/members/me/boards/',
+        loadedBoardsCb,
+        function() { console.log("Failed to load boards"); }
+      );
+    };
+
+    // ------------------------------------------------------------------------ //
+    // --------------------------- /Callbacks ---------------------------------- //
+    // ------------------------------------------------------------------------ //
+
+    // ------------------------------------------------------------------------ //
+    // --------------------------- Events -------------------------------------- //
+    // ------------------------------------------------------------------------ //
+    
+    // ddl change event
     $('#boards').change(function() {
       var boardId = $("option:selected", this).val();
       $('#labels').empty();
       $('#lists').empty();
+      
+      // get labels for a specific board
       Trello.get(
         '/boards/' + boardId + '/labels',
-        loadedLabels,
+        loadedLabelsCb,
         function() { console.log("Failed to load labels"); }
       );
 
+      // get lists for a specific board
       Trello.get(
-        '/boards/' + boardId + '/lists',
-        loadedLists,
+        '/boards/' + boardId + '/lists?cards=open',
+        loadedListsCb,
         function() { console.log("Failed to load lists"); }
       );
     });
     
+   $('#createCard').change(function() {
+          if($(this).is(":checked")) {
+             createCardOnSelect = true;
+          } else {
+            createCardOnSelect = false;
+          }
+      });
+
+
+    // ------------------------------------------------------------------------ //
+    // --------------------------- / Events -------------------------------------- //
+    // ------------------------------------------------------------------------ //
+
+
+    // connect to trello and load the users boards in a ddl
     Trello.authorize({
       type: "popup",
       name: "Trello dashboard",
@@ -87,9 +157,9 @@
         read: true,
         write: true },
       expiration: "never",
-      success: loadBoards,
+      success: loadBoardsCb,
       error: function() { console.log("Failed authentication"); }
     });
-
+  
   </script>
 </html>
